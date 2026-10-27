@@ -1,0 +1,7 @@
+node_modules/
+venv/
+captcha*.png
+session*.json
+debug_*.png
+*.log
+results/
