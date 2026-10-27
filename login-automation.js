@@ -28,27 +28,60 @@ class LoginAutomation {
 
     // Called by run-automation.js — wraps handleLoginProcess and returns
 // the shape run-automation.js expects.
-    async run(maxRetries = 3) {
-        const result = await this.handleLoginProcess(
-            this.username,
-            this.password,
-            maxRetries
-        );
+    // async run(maxRetries = 3) {
+    //     const result = await this.handleLoginProcess(
+    //         this.username,
+    //         this.password,
+    //         maxRetries
+    //     );
 
-        return {
-            id: this.id,
-            username: this.username,
-            password: this.password,
-            stb: this.stbNumber,
-            dueDate: result.dueDate || null,   // not yet implemented downstream
-            success: !!result.success,
-            attempts: result.attempts,
-            captcha: result.captcha,
-            navigation: result.navigation,
-            sessionSaved: result.sessionSaved,
-            ...(result.success ? {} : { error: result.error || 'Login failed' }),
-        };
+    //     return {
+    //         id: this.id,
+    //         username: this.username,
+    //         password: this.password,
+    //         stb: this.stbNumber,
+    //         dueDate: result.dueDate || null,   // not yet implemented downstream
+    //         success: !!result.success,
+    //         attempts: result.attempts,
+    //         captcha: result.captcha,
+    //         navigation: result.navigation,
+    //         sessionSaved: result.sessionSaved,
+    //         ...(result.success ? {} : { error: result.error || 'Login failed' }),
+    //     };
+    // }
+
+    async run(maxRetries = 3) {
+    const result = await this.handleLoginProcess(
+        this.username,
+        this.password,
+        maxRetries
+    );
+
+    const loginOk = !!result.success;
+    const stepsOk = !!(result.navigation && result.navigation.success);
+    const success = loginOk && stepsOk;
+
+    let message;
+    if (success) {
+        message = 'Successfully renewed the pack.';
+    } else if (!loginOk) {
+        message = result.error || `Login failed after ${result.attempts} attempt(s)`;
+    } else {
+        message = (result.navigation && result.navigation.error) || 'Dashboard steps failed';
     }
+    // keep only the first line, Playwright errors can be very long
+    message = String(message).split('\n')[0];
+
+    return {
+        username: this.username,
+        password: this.password,
+        stb: this.stbNumber,
+        dueDate: result.dueDate || null,
+        success,
+        message,
+        attempts: result.attempts,
+    };
+}
 
     async initialize() {
         // Launch browser with necessary options
