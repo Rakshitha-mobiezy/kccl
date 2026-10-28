@@ -34,7 +34,7 @@ app.use(express.json());
 // of EACH account's automation gets POSTed automatically once it finishes -
 // you don't need to poll for it, it's pushed out on its own.
 // ---------------------------------------------------------------------------
-const RESULTS_API_URL = 'https://apibng.mobiezy.in/service2/update_gtpl_automation_response';
+const RESULTS_API_URL = 'https://apibng.mobiezy.in/service2/update_automation_response';
 
 // In-memory job store: jobId -> { status, results, startedAt, completedAt }
 // NOTE: resets if the server restarts. Swap for Redis/a DB if you need this
