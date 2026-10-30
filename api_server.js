@@ -42,15 +42,29 @@ const RESULTS_API_URL = 'https://apibng.mobiezy.in/service2/update_automation_re
 const jobs = new Map();
 
 // Shapes a result down to exactly: id, username, password, stb, dueDate, success, message
+// function toApiResponse(result) {
+//     return {
+//         id: result.id,
+//         username: result.username,
+//         password: result.password,
+//         stb: result.stb,
+//         dueDate: result.dueDate || null,
+//         success: !!result.success,
+//         message: result.message || (result.success ? 'Successfully renewed the pack.' : 'Automation failed.'),
+//     };
+// }
+
 function toApiResponse(result) {
+    const ok = !!result.success;
     return {
         id: result.id,
         username: result.username,
         password: result.password,
         stb: result.stb,
         dueDate: result.dueDate || null,
-        success: !!result.success,
-        message: result.message || (result.success ? 'Successfully renewed the pack.' : 'Automation failed.'),
+        status: ok ? 'success' : 'failed',   // <-- the field the backend is asking for
+        success: ok,
+        message: result.message || (ok ? 'Successfully renewed the pack.' : 'Automation failed.'),
     };
 }
 
