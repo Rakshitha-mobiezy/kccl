@@ -79,12 +79,14 @@ async function runOneAccountAndReport({ id, username, password, stb, headless = 
     const payload = toApiResponse({ ...rawResult, id });
 
     try {
-        await fetch(RESULTS_API_URL, {
+        const res = await fetch(RESULTS_API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         });
-        console.log(`[${id || username}] Result reported to results API.`);
+        const text = await res.text();
+        console.log(`[${id || username}] Payload sent: ${JSON.stringify({ ...payload, password: '***' })}`);
+        console.log(`[${id || username}] Results API replied ${res.status}: ${text.slice(0, 300)}`);
     } catch (err) {
         console.error(`[${id || username}] Failed to POST result to results API: ${err.message}`);
     }

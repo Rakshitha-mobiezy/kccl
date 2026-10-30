@@ -86,8 +86,8 @@ class LoginAutomation {
     async initialize() {
         // Launch browser with necessary options
         this.browser = await chromium.launch({
-            headless: true, // Set to true for headless mode
-            slowMo: 1000,    // Slow down actions for better visibility
+            headless: this.headless, // Set to true for headless mode
+            slowMo: this.headless ? 0 : 100,   // Slow down actions for better visibility
         });
         
         this.page = await this.browser.newPage();
@@ -166,7 +166,7 @@ class LoginAutomation {
             });
             
             // Save CAPTCHA image for debugging
-            const captchaPath = path.join(__dirname, 'captcha.png');
+            const captchaPath = path.join(__dirname, `captcha_${this.label}.png`);
             fs.writeFileSync(captchaPath, captchaBuffer);
             console.log('📸 CAPTCHA image saved for processing...');
             
@@ -339,6 +339,7 @@ class LoginAutomation {
     async handlePostLogin() {
     console.log('🔍 Handling post-login dashboard...');
     const page = this.page;
+    let step = 'starting';
 
     try {
         // Make sure the STB number actually arrived
@@ -349,7 +350,7 @@ class LoginAutomation {
 
         await page.waitForLoadState('domcontentloaded');
         console.log(`📍 Landed on URL: ${page.url()}`);
-
+        step = 'closing the notification popup';
         // 1. Close the notification popup (exact "OK", visible only)
         try {
             const okButton = page.locator(
@@ -362,7 +363,7 @@ class LoginAutomation {
         } catch (e) {
             console.log('ℹ️ No notification popup found, continuing...');
         }
-
+        step = 'selecting Serial / VC Number';
         // 2. Select "Serial / VC Number" in the top-bar dropdown
         const select = page
             .locator('select:visible')
@@ -375,7 +376,7 @@ class LoginAutomation {
         const chosen = await select.evaluate(el => el.options[el.selectedIndex].text.trim());
         console.log(`✅ Dropdown now shows: "${chosen}"`);
         await page.waitForTimeout(500);
-
+        step = 'typing the STB number';
         // 3. Find the input that belongs to this dropdown (same group in the top bar)
         const searchInput = select.locator(
             'xpath=ancestor::*[.//input[not(@type="hidden")]][1]//input[not(@type="hidden")][1]'
@@ -387,7 +388,7 @@ class LoginAutomation {
         await searchInput.fill('');
         await searchInput.press('Control+A');
         await searchInput.press('Backspace');
-        await searchInput.pressSequentially(String(this.stbNumber), { delay: 80 });
+        await searchInput.pressSequentially(String(this.stbNumber), { delay: 20 });
 
         // Verify what is really in the box
         const typed = await searchInput.inputValue();
@@ -397,7 +398,7 @@ class LoginAutomation {
         }
 
         await page.screenshot({ path: `debug_before_search_${this.label}.png`, fullPage: true });
-
+        step = 'clicking search';
         // 4. Click the blue search button (Enter as fallback)
         try {
             const searchButton = searchInput.locator(
@@ -414,7 +415,7 @@ class LoginAutomation {
         await page.waitForTimeout(2000);
         await page.screenshot({ path: `debug_after_search_${this.label}.png`, fullPage: true });
         console.log('✅ Search completed.');
-
+        step = 'finding the STB row / green plus icon';
                 // 5. Click the green "+" in the Operations column of the STB row
         console.log('➕ Looking for the green plus icon in STB Details...');
         const stbRow = page.locator('tr', { hasText: String(this.stbNumber) }).last();
@@ -431,7 +432,15 @@ class LoginAutomation {
         await plusIcon.scrollIntoViewIfNeeded();
         await plusIcon.click({ timeout: 5000 });
         console.log('✅ Green plus icon clicked.');
-
+        await page.waitForTimeout(3000);
+        await page.screenshot({ path: `debug_after_plus_${this.label}.png`, fullPage: true });
+        const popupText = await page
+            .locator('.modal.show, .swal2-popup')
+            .first()
+            .innerText()
+            .catch(() => '(no popup visible)');
+        console.log('🪟 Popup after plus click:', popupText.replace(/\s+/g, ' ').slice(0, 300));
+        step = 'waiting for the Quick Activate popup';
         // 6. Popup 1 (Reactivate Services): click "Quick Activate"
         const quickActivate = page.locator(
             'button:text-is("Quick Activate"):visible, a:text-is("Quick Activate"):visible, input[value="Quick Activate"]:visible'
@@ -440,7 +449,7 @@ class LoginAutomation {
         await page.screenshot({ path: `debug_reactivate_popup_${this.label}.png`, fullPage: true });
         await quickActivate.click();
         console.log('✅ Quick Activate clicked.');
-
+        step = 'waiting for the confirmation (Yes) popup';
         // 7. Popup 2 (Are you sure...): click "Yes"
         const yesButton = page.locator(
             'button:text-is("Yes"):visible, a:text-is("Yes"):visible, input[value="Yes"]:visible'
@@ -459,7 +468,8 @@ class LoginAutomation {
     } catch (error) {
         console.error('❌ Error during post-login dashboard steps:', error.message);
         await page.screenshot({ path: `debug_postlogin_error_${this.label}.png`, fullPage: true }).catch(() => {});
-        return { success: false, error: error.message };
+        // return { success: false, error: error.message };
+        return { success: false, error: `Failed while ${step}: ${String(error.message).split('\n')[0]}` };
     }
 }
 
@@ -580,7 +590,7 @@ class LoginAutomation {
             //         const currentUrl = this.page.url();
             
             
-            attempts++;
+            // attempts++;
             } catch (error) {
                 console.error(`Attempt ${attempts + 1} failed:`, error.message);
                 
@@ -696,7 +706,8 @@ async function runLoginAutomation() {
         }
         
     } catch (error) {
-        console.error('Fatal error:', error);
+        // console.error('Fatal error:', error);
+        return { success: false, error: `Failed while ${step}: ${String(error.message).split('\n')[0]}` };
     } finally {
         await automation.close();
     }
