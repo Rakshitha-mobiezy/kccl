@@ -58,13 +58,10 @@ function toApiResponse(result) {
     const ok = !!result.success;
     return {
         id: result.id,
-        username: result.username,
-        password: result.password,
-        stb: result.stb,
-        dueDate: result.dueDate || null,
-        status: ok ? 'success' : 'failed',   // <-- the field the backend is asking for
-        success: ok,
-        message: result.message || (ok ? 'Successfully renewed the pack.' : 'Automation failed.'),
+        status: ok ? 'Success' : 'Failed',
+        response: result.message || (ok ? 'Recharge completed successfully' : 'Automation failed.'),
+        pre_end_date: result.dueDate || null,
+        vc_number: result.stb,
     };
 }
 
