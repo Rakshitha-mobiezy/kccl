@@ -76,7 +76,8 @@ class LoginAutomation {
         username: this.username,
         password: this.password,
         stb: this.stbNumber,
-        dueDate: result.dueDate || null,
+        // dueDate: result.dueDate || null,
+        dueDate: (result.navigation && result.navigation.dueDate) || null,
         success,
         message,
         attempts: result.attempts,
@@ -460,11 +461,66 @@ class LoginAutomation {
         console.log('✅ Yes clicked. Activation confirmed.');
 
         // Wait for the confirm popup to go away, then capture the final state
+        // await yesButton.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
+        // await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+        // await page.waitForTimeout(3000);
+        // await page.screenshot({ path: `debug_after_activate_${this.label}.png`, fullPage: true });
+        // return { success: true, method: 'dashboard_search', url: page.url() };
+        // 8. Optional popup after renewal (e.g. "renewed successfully"): click OK / Yes if it appears
+        step = 'handling the popup after activation';
         await yesButton.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
+        const afterPopupBtn = page.locator(
+            '.modal.show button:text-is("Yes"), .modal.show button:text-is("OK"), .modal.show button:text-is("Ok"), .swal2-confirm'
+        ).filter({ visible: true }).first();
+        try {
+            await afterPopupBtn.waitFor({ state: 'visible', timeout: 8000 });
+            const popupMsg = await page.locator('.modal.show, .swal2-popup').first().innerText().catch(() => '');
+            console.log('🪟 Post-activation popup:', popupMsg.replace(/\s+/g, ' ').slice(0, 200));
+            await page.screenshot({ path: `debug_post_activation_popup_${this.label}.png`, fullPage: true });
+            await afterPopupBtn.click();
+            console.log('✅ Post-activation popup closed.');
+            await afterPopupBtn.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+        } catch (e) {
+            console.log('ℹ️ No post-activation popup, back on the dashboard.');
+        }
         await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-        await page.waitForTimeout(3000);
+        await page.waitForTimeout(2000);
         await page.screenshot({ path: `debug_after_activate_${this.label}.png`, fullPage: true });
-        return { success: true, method: 'dashboard_search', url: page.url() };
+
+        // 9. Click the blue "i" (More) icon in the STB row
+        step = 'clicking the More (info) icon';
+        const rowAfter = page.locator('tr', { hasText: String(this.stbNumber) }).last();
+        await rowAfter.waitFor({ state: 'visible', timeout: 15000 });
+        const moreCell = rowAfter.locator('td').last();   // "More" is the last column
+        console.log('🔎 More cell HTML:', (await moreCell.evaluate(el => el.innerHTML)).replace(/\s+/g, ' ').slice(0, 300));
+        const moreIcon = moreCell.locator('a, button, i, span, img').first();
+        await moreIcon.scrollIntoViewIfNeeded();
+        await moreIcon.click({ timeout: 5000 });
+        console.log('✅ More icon clicked.');
+
+        // 10. Read the Expiry Date from the "More info" popup
+        step = 'reading the expiry date from the More info popup';
+        const infoModal = page.locator('.modal.show, .swal2-popup').filter({ hasText: 'Expiry Date' }).first();
+        await infoModal.waitFor({ state: 'visible', timeout: 15000 });
+        const infoText = await infoModal.innerText();
+        console.log('🪟 More info popup:', infoText.replace(/\s+/g, ' ').slice(0, 200));
+        await page.screenshot({ path: `debug_more_info_${this.label}.png`, fullPage: true });
+
+        // "Expiry Date : 02-11-2031 11:42:07"  ->  "2031-11-02"
+        let dueDate = null;
+        const m = infoText.match(/Expiry Date\s*:?\s*(\d{2})-(\d{2})-(\d{4})/);
+        if (m) {
+            dueDate = `${m[3]}-${m[2]}-${m[1]}`;
+            console.log(`📅 Due date: ${dueDate}`);
+        } else {
+            console.log('⚠️ Could not read the expiry date from the popup.');
+        }
+
+        // Close the info popup
+        const okInfo = infoModal.locator('button:text-is("Ok"), button:text-is("OK")').first();
+        await okInfo.click({ timeout: 5000 }).catch(() => {});
+
+        return { success: true, method: 'dashboard_search', url: page.url(), dueDate };
     } catch (error) {
         console.error('❌ Error during post-login dashboard steps:', error.message);
         await page.screenshot({ path: `debug_postlogin_error_${this.label}.png`, fullPage: true }).catch(() => {});
