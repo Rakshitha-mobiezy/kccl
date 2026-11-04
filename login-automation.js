@@ -423,17 +423,26 @@ class LoginAutomation {
         step = 'finding the STB row / green plus icon';
                 // 5. Click the green "+" in the Operations column of the STB row
         console.log('➕ Looking for the green plus icon in STB Details...');
-        const stbRow = page.locator('tr', { hasText: String(this.stbNumber) }).last();
-        await stbRow.waitFor({ state: 'visible', timeout: 15000 });
+        // const stbRow = page.locator('tr', { hasText: String(this.stbNumber) }).last();
+        // const stbRow = page
+        //     .locator('tr')
+        //     .filter({ has: page.locator('a.active_service, a.add_service_ind') })
+        //     .first();
+        // await stbRow.waitFor({ state: 'visible', timeout: 15000 });
 
-        // Operations is the 2nd cell (1st cell is the checkbox)
-        const opsCell = stbRow.locator('td').nth(1);
-        await opsCell.waitFor({ state: 'visible', timeout: 5000 });
-        console.log('🔎 Operations cell HTML:', (await opsCell.evaluate(el => el.innerHTML)).replace(/\s+/g, ' ').slice(0, 500));
+        // // Operations is the 2nd cell (1st cell is the checkbox)
+        // const opsCell = stbRow.locator('td').nth(1);
+        // await opsCell.waitFor({ state: 'visible', timeout: 5000 });
+        // console.log('🔎 Operations cell HTML:', (await opsCell.evaluate(el => el.innerHTML)).replace(/\s+/g, ' ').slice(0, 500));
 
-        const plusIcon = opsCell
-            .locator('a, button, input[type="image"], input[type="button"], img, i, span')
-            .first();
+        // const plusIcon = opsCell
+        //     .locator('a, button, input[type="image"], input[type="button"], img, i, span')
+        //     .first();
+        // await plusIcon.scrollIntoViewIfNeeded();
+        // await plusIcon.click({ timeout: 5000 });
+        const plusIcon = page.locator('a.active_service, a.add_service_ind').first();
+        await plusIcon.waitFor({ state: 'visible', timeout: 15000 });
+        console.log('🔎 Plus icon HTML:', (await plusIcon.evaluate(el => el.outerHTML)).slice(0, 300));
         await plusIcon.scrollIntoViewIfNeeded();
         await plusIcon.click({ timeout: 5000 });
         console.log('✅ Green plus icon clicked.');
@@ -493,11 +502,19 @@ class LoginAutomation {
 
         // 9. Click the blue "i" (More) icon in the STB row
         step = 'clicking the More (info) icon';
-        const rowAfter = page.locator('tr', { hasText: String(this.stbNumber) }).last();
-        await rowAfter.waitFor({ state: 'visible', timeout: 15000 });
-        const moreCell = rowAfter.locator('td').last();   // "More" is the last column
-        console.log('🔎 More cell HTML:', (await moreCell.evaluate(el => el.innerHTML)).replace(/\s+/g, ' ').slice(0, 300));
-        const moreIcon = moreCell.locator('a, button, i, span, img').first();
+        // const rowAfter = page.locator('tr', { hasText: String(this.stbNumber) }).last();
+        // const rowAfter = page
+        //     .locator('tr')
+        //     .filter({ has: page.locator('span.cas_moreinfo') })
+        //     .first();
+        // await rowAfter.waitFor({ state: 'visible', timeout: 15000 });
+        // const moreCell = rowAfter.locator('td').last();   // "More" is the last column
+        // console.log('🔎 More cell HTML:', (await moreCell.evaluate(el => el.innerHTML)).replace(/\s+/g, ' ').slice(0, 300));
+        // const moreIcon = moreCell.locator('a, button, i, span, img').first();
+        // await moreIcon.scrollIntoViewIfNeeded();
+        // await moreIcon.click({ timeout: 5000 });
+        const moreIcon = page.locator('span.cas_moreinfo').first();
+        await moreIcon.waitFor({ state: 'visible', timeout: 15000 });
         await moreIcon.scrollIntoViewIfNeeded();
         await moreIcon.click({ timeout: 5000 });
         console.log('✅ More icon clicked.');
