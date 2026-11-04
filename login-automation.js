@@ -371,7 +371,7 @@ class LoginAutomation {
             .filter({ has: page.locator('option', { hasText: 'Serial / VC Number' }) })
             .first();
         await select.waitFor({ state: 'visible', timeout: 10000 });
-        await select.selectOption({ label: 'Serial / VC Number' });
+        // await select.selectOption({ label: 'Serial / VC Number' });
 
         // Verify the dropdown really changed
         const chosen = await select.evaluate(el => el.options[el.selectedIndex].text.trim());
@@ -379,9 +379,13 @@ class LoginAutomation {
         await page.waitForTimeout(500);
         step = 'typing the STB number';
         // 3. Find the input that belongs to this dropdown (same group in the top bar)
-        const searchInput = select.locator(
-            'xpath=ancestor::*[.//input[not(@type="hidden")]][1]//input[not(@type="hidden")][1]'
-        );
+        // const searchInput = select.locator(
+        //     'xpath=ancestor::*[.//input[not(@type="hidden")]][1]//input[not(@type="hidden")][1]'
+        // );
+        const searchInput = select
+            .locator('xpath=following::input[not(@type="hidden")]')
+            .filter({ visible: true })
+            .nth(1);
         await searchInput.waitFor({ state: 'visible', timeout: 5000 });
 
         // Clear the old value (e.g. K09D070), then type like a real user
