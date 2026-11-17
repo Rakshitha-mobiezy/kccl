@@ -246,43 +246,65 @@ class LoginAutomation {
         }
         
         // Wait for navigation after login submission
+        // try {
+        //     console.log('⏳ Waiting for login response and redirect...');
+            
+        //     // Wait for any navigation to occur
+        //     await this.page.waitForLoadState('networkidle', { timeout: 15000 });
+            
+        //     // Give it a moment for any additional redirects
+        //     await this.page.waitForTimeout(3000);
+            
+        //     const currentUrl = this.page.url();
+        //     console.log(`Final URL after login: ${currentUrl}`);
+            
+        //     // Check if we successfully logged in (not on login page anymore)
+        //     if (!currentUrl.includes('login')) {
+        //         console.log('✅ Login successful - redirected away from login page');
+        //         return true;
+        //     } else {
+        //         console.log('❌ Still on login page - login might have failed');
+        //         return false;
+        //     }
+            
+        // } catch (error) {
+        //     console.log('Navigation timeout or error:', error.message);
+            
+        //     // Check current URL even if navigation timed out
+        //     const currentUrl = this.page.url();
+        //     console.log(`Current URL after timeout: ${currentUrl}`);
+            
+        //     if (!currentUrl.includes('login')) {
+        //         console.log('✅ Login appears successful despite navigation timeout');
+        //         return true;
+        //     } else {
+        //         console.log('❌ Still on login page - might need to retry CAPTCHA');
+        //         return false;
+        //     }
+        // }
+                // Wait for the page to react, then check whether the login form is still showing
         try {
-            console.log('⏳ Waiting for login response and redirect...');
-            
-            // Wait for any navigation to occur
-            await this.page.waitForLoadState('networkidle', { timeout: 15000 });
-            
-            // Give it a moment for any additional redirects
+            console.log('⏳ Waiting for login response...');
+            await this.page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
             await this.page.waitForTimeout(3000);
-            
-            const currentUrl = this.page.url();
-            console.log(`Final URL after login: ${currentUrl}`);
-            
-            // Check if we successfully logged in (not on login page anymore)
-            if (!currentUrl.includes('login')) {
-                console.log('✅ Login successful - redirected away from login page');
+
+            console.log(`Final URL after login: ${this.page.url()}`);
+
+            const loginFormVisible =
+                (await this.page.locator('input[type="password"]:visible').count()) > 0;
+
+            if (!loginFormVisible) {
+                console.log('✅ Login successful - login form is gone');
                 return true;
-            } else {
-                console.log('❌ Still on login page - login might have failed');
-                return false;
             }
-            
+            console.log('❌ Login form still showing - wrong CAPTCHA or credentials, retrying...');
+            return false;
         } catch (error) {
-            console.log('Navigation timeout or error:', error.message);
-            
-            // Check current URL even if navigation timed out
-            const currentUrl = this.page.url();
-            console.log(`Current URL after timeout: ${currentUrl}`);
-            
-            if (!currentUrl.includes('login')) {
-                console.log('✅ Login appears successful despite navigation timeout');
-                return true;
-            } else {
-                console.log('❌ Still on login page - might need to retry CAPTCHA');
-                return false;
-            }
+            console.log('Error while checking login result:', error.message);
+            return false;
         }
     }
+    
 
     // async handlePostLogin() {
     //     console.log('🔍 Checking final landing page...');
@@ -382,10 +404,22 @@ class LoginAutomation {
         // const searchInput = select.locator(
         //     'xpath=ancestor::*[.//input[not(@type="hidden")]][1]//input[not(@type="hidden")][1]'
         // );
-        const searchInput = select
-            .locator('xpath=following::input[not(@type="hidden")]')
-            .filter({ visible: true })
-            .nth(1);
+        // const searchInput = select
+        //     .locator('xpath=following::input[not(@type="hidden")]')
+        //     .filter({ visible: true })
+        //     .nth(1);
+                // Only real text boxes (ignores radios, checkboxes, theme switches)
+        const textBoxes = select
+            .locator('xpath=following::input[not(@type) or @type="text" or @type="search"]')
+            .filter({ visible: true });
+        await textBoxes.first().waitFor({ state: 'visible', timeout: 10000 });
+        const boxCount = await textBoxes.count();
+        console.log(`🔎 Text boxes found after the dropdown: ${boxCount}`);
+
+        // The bar has [K08W082 prefix box] [empty grey box]. We want the 2nd one,
+        // or the only one if the prefix is not an input on this page.
+        // const searchInput = textBoxes.nth(Math.min(boxCount, 2) - 1);
+        const searchInput = textBoxes.first();
         await searchInput.waitFor({ state: 'visible', timeout: 5000 });
 
         // Clear the old value (e.g. K09D070), then type like a real user
